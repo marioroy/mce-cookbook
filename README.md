@@ -3,7 +3,8 @@
 This is a place holder for demonstrating various use-cases for MCE such as
 combining MCE with AnyEvent.
 
-My first priority is completing MCE 1.7.
+My first priority is completing MCE 1.7 as of this time. Afterwards, will
+work on this.
 
 Best Regards,
 Mario
