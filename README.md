@@ -8,6 +8,98 @@ My first priority is completing MCE 1.700. Afterwards, will work on this.
 Best Regards,
 Mario
 
+### Parallel IO reader demonstration for BioUtil::Seq
+
+MCE::Shared provides a "real" shared handle. Thus, allowing for parallel IO
+iteration between many workers simultaneously.
+
+This demonstration requires MCE 1.699(002) or later to work.
+
+```perl
+ use strict;
+ use warnings;
+
+ use MCE::Hobo;
+ use MCE::Shared;
+
+ sub FastaReader2 {
+    my ( $file, $not_trim ) = @_;
+
+    my ( $open_flg ) = ( 0 );
+    my ( $fh, $pos, $head );
+
+    if ( $file =~ /^STDIN$/i ) {
+       # from stdin
+       $fh = MCE::Shared->handle( "<", \*STDIN );
+    }
+    elsif ( ref $file eq '' or ref $file eq 'SCALAR' ) {
+       # from file
+       $fh = MCE::Shared->handle( "<", $file )
+          or die "fail to open file: $file!\n";
+       $open_flg = 1;
+    }
+    else {
+       # glob, i.e. given file handler
+       # $fh = $file  # ok for MCE::Shared{ ->handle or ::Handle->new }
+       #                                     (shared)    (non-shared)
+       #
+       # Below logic will not work if not a MCE::Shared handle. The reason
+       # is that MCE::Shared/Handle treats "\n>" auto-magically; providing
+       # records beginning with ">" and ending with "\n".
+
+       return sub { return };
+    }
+
+    return sub {
+       local $/ = "\n>";  # set input record separator
+
+       while ( <$fh> ) {
+          # skip comment section at the top of the file
+          next if substr($_, 0, 1) ne '>';
+
+          # extract header and sequence
+          $pos  = index( $_, "\n" ) + 1;
+          $head = substr( $_, 1, $pos - 2 );
+
+          # $_ becomes sequence after substr
+          substr( $_, 0, $pos, '' );
+
+          # trim trailing "\r" in header
+          chop $head if substr( $head, -1, 1 ) eq "\r";
+
+          if ( length $head > 0 ) {
+             $_ =~ tr/\t\r\n //d unless $not_trim;
+             return [ $head, $_ ];
+          }
+       }
+
+       close $fh if $open_flg;
+
+       return;
+    };
+ }
+
+ sub parallel_reader {
+    my ( $id, $next_seq ) = @_;
+
+    while ( my $fa = &$next_seq() ) {
+       my ( $header, $seq ) = @$fa;
+       print "$id: >$header\n$seq\n";
+
+       sleep 1;  # simulate work
+    }
+ }
+
+ #my $next_seq = FastaReader2("STDIN");
+  my $next_seq = FastaReader2("sample.fasta");
+
+  MCE::Hobo->new( \&parallel_reader, $_, $next_seq ) for 1 .. 3;
+
+ #... do other stuff ...
+
+  $_->join() for MCE::Hobo->list();
+```
+
 ### Find Fibonacci primes in parallel, using Math::Prime::Util
 
 The following script is a parallel demonstration using MCE::Hobo and
@@ -106,9 +198,9 @@ This will run on machines where Perl lacks threads support.
 
 ### Sharing Perl Data Language (PDL) objects on UNIX
 
-One can share PDL objects beginning with MCE 1.700. Construction takes place
-under the shared-server process. PDL methods are directed automatically via
-Perl's AUTOLOAD feature inside MCE::Shared::Object.
+One can share PDL objects beginning with MCE 1.699(001). Construction takes
+place under the shared-manager process. PDL methods are directed automatically
+via Perl's AUTOLOAD feature inside MCE::Shared::Object.
 
 ```perl
  use strict;
@@ -146,7 +238,7 @@ Perl's AUTOLOAD feature inside MCE::Shared::Object.
 
        my $result = $l->slice( ":,$start:$stop" ) x $r;
 
-     # --- action taken by the shared-server process
+     # --- action taken by the shared-manager process
      # ins_inplace(  2 args ): $this->slice( $arg1 ) .= $arg2;
      # ins_inplace( >2 args ): ins( inplace( $this ), $what, @coords );
 
@@ -203,7 +295,7 @@ with MCE Examples).
 
       my $result = $l->slice( ":,$start:$stop" ) x $r_copy;
 
-    # --- action taken by the shared-server process
+    # --- action taken by the shared-manager process
     # ins_inplace  2 args:  $this->slice( $arg1 ) .= $arg2;
     # ins_inplace >2 args:  ins( inplace( $this ), $what, @coords );
 
