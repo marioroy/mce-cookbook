@@ -110,12 +110,11 @@ via Perl's AUTOLOAD feature inside MCE::Shared::Object.
  use strict;
  use warnings;
 
- use PDL;
- use PDL::IO::Storable;       # must load for freezing/thawing
- use Time::HiRes qw( time );
+ use PDL;  # must load PDL before MCE
 
- use MCE::Hobo;               # load MCE after PDL
+ use MCE::Hobo;
  use MCE::Shared;
+ use Time::HiRes qw( time );
 
  my $tam     = @ARGV ? shift : 512;
  my $N_procs = @ARGV ? shift :   8;
@@ -143,11 +142,14 @@ via Perl's AUTOLOAD feature inside MCE::Shared::Object.
        my $result = $l->slice( ":,$start:$stop" ) x $r;
 
      # --- action taken by the shared-manager process
-     # ins_inplace(  2 args ): $this->slice( $arg1 ) .= $arg2;
-     # ins_inplace( >2 args ): ins( inplace( $this ), $what, @coords );
+     # ins_inplace(  1 arg  ):  ins( inplace( $this ), $what, 0, 0 );
+     # ins_inplace(  2 args ):  $this->slice( $arg1 ) .= $arg2;
+     # ins_inplace( >2 args ):  ins( inplace( $this ), $what, @coords );
 
-     # $o->ins_inplace( ":,$start:$stop", $result );
-       $o->ins_inplace( $result, 0, $seq_n );
+     # -- use case
+     # $o->ins_inplace( $result );                    #  1 arg
+     # $o->ins_inplace( ":,$start:$stop", $result );  #  2 args
+       $o->ins_inplace( $result, 0, $seq_n );         # >2 args
     }
 
     return;
@@ -182,32 +184,35 @@ via Perl's AUTOLOAD feature inside MCE::Shared::Object.
 
 The above example fails on Windows. Therefore, the next demonstration will
 share all 3 matrices. Workers obtain a copy for the right matrix. Another way
-is using memory mapped data for the right matrix (matmult_mce_d.pl - provided
-with MCE Examples).
+is using memory mapped data for the right matrix (matmult_mce_d.pl - included
+with the MCE examples on Github).
 
 ```perl
  my $r = MCE::Shared->pdl_sequence( $rows, $cols );
 
  sub parallel_matmult {
-   my ( $id ) = @_;
-   my $r_copy = $r->copy;
+    my ( $id ) = @_;
+    my $r_copy = $r->sever;
 
-   while ( defined ( my $seq_n = $s->next() ) ) {
-      my $start  = $seq_n;
-      my $stop   = $start + $step_size - 1;
-         $stop   = $rows - 1 if $stop >= $rows;
+    while ( defined ( my $seq_n = $s->next() ) ) {
+       my $start  = $seq_n;
+       my $stop   = $start + $step_size - 1;
+          $stop   = $rows - 1 if $stop >= $rows;
 
-      my $result = $l->slice( ":,$start:$stop" ) x $r_copy;
+       my $result = $l->slice( ":,$start:$stop" ) x $r_copy;
 
-    # --- action taken by the shared-manager process
-    # ins_inplace  2 args:  $this->slice( $arg1 ) .= $arg2;
-    # ins_inplace >2 args:  ins( inplace( $this ), $what, @coords );
+     # --- action taken by the shared-manager process
+     # ins_inplace(  1 arg  ):  ins( inplace( $this ), $what, 0, 0 );
+     # ins_inplace(  2 args ):  $this->slice( $arg1 ) .= $arg2;
+     # ins_inplace( >2 args ):  ins( inplace( $this ), $what, @coords );
 
-    # $o->ins_inplace( ":,$start:$stop", $result );
-      $o->ins_inplace( $result, 0, $seq_n );
-   }
+     # -- use case
+     # $o->ins_inplace( $result );                    #  1 arg
+     # $o->ins_inplace( ":,$start:$stop", $result );  #  2 args
+       $o->ins_inplace( $result, 0, $seq_n );         # >2 args
+    }
 
-   return;
+    return;
  }
 ```
 
