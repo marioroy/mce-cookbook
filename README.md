@@ -216,7 +216,7 @@ with the MCE examples on Github).
  }
 ```
 
-### Cross-platform template for making an executable with PAR::Packer
+### Cross-platform template for making a binary executable via PAR::Packer
 
 Threads, threads::shared, and exiting via threads are necessary for the binary
 to run successfully on the Windows platform.
