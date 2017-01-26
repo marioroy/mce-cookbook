@@ -216,28 +216,30 @@ with the MCE examples on Github).
  }
 ```
 
-### Running as a binary on Windows
-
-PAR::Packer allows one to pack Perl script(s) into an executable.
+### Cross-platform template for making an executable with PAR::Packer
 
 Threads, threads::shared, and exiting via threads are necessary for the binary
-to run successfully on Windows. Also, Time::HiRes and Storable.
+to run successfully on the Windows platform.
 
 ```perl
  # https://metacpan.org/pod/PAR::Packer
  # https://metacpan.org/pod/pp
  #
  #   pp -o hello.exe hello.pl
- #   hello
+ #   hello.exe
 
  use strict;
  use warnings;
 
- use threads;
- use threads::shared;
+ use if $^O eq "MSWin32", "threads";
+ use if $^O eq "MSWin32", "threads::shared";
 
- use Time::HiRes ();
+ use Time::HiRes (); # include minimum dependencies for MCE
  use Storable ();
+
+ use IO::FDPass ();  # optional, for MCE::Shared->condvar, handle, queue
+ use Sereal ();      # optional, for faster serialization
+
  use MCE;
 
  my $mce = MCE->new(
@@ -249,7 +251,7 @@ to run successfully on Windows. Also, Time::HiRes and Storable.
 
  $mce->run();
 
- threads->exit(0);
+ threads->exit(0) if $INC{"threads.pm"};
 ```
 
 ### Copyright and Licensing
