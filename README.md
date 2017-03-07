@@ -10,7 +10,7 @@ See also [mce-examples](https://github.com/marioroy/mce-examples) for more recip
 [Parallel IO reader with BioUtil::Seq](#Parallel-IO-reader-with-BioUtil)<br />
 [Sharing Perl Data Language (PDL) on UNIX](#Sharing-PDL-on-UNIX)<br />
 [Sharing Perl Data Language (PDL) on Windows](#Sharing-PDL-on-Windows)<br />
-[Copyright and Licensing](Copyright-and-Licensing)<br />
+[Copyright and Licensing](#Copyright-and-Licensing)<br />
 
 ### <a id="Making-an-executable-via-PAR-Packer"></a>Cross-platform template for making a binary executable via PAR::Packer
 
