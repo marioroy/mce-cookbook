@@ -3,10 +3,10 @@
 This is a place holder for demonstrating various use-cases with the Perl
 MCE module including MCE::Hobo and MCE::Shared.
 
-[Parallel IO Reader for BioUtil::Seq](#Parallel-IO-Reader-for-BioUtil)
-[Sharing Perl Data Language (PDL) Objects on UNIX](#Sharing-PDL-Objects-on-UNIX)
-[Sharing Perl Data Language (PDL) Objects on Windows](#Sharing-PDL-Objects-on-Windows)
-[Cross-platform template for making executable via PAR::Packer](#Making-Executable-via-PAR-Packer)
+[Parallel IO Reader for BioUtil::Seq](#Parallel-IO-Reader-for-BioUtil)<br />
+[Sharing Perl Data Language (PDL) Objects on UNIX](#Sharing-PDL-Objects-on-UNIX)<br />
+[Sharing Perl Data Language (PDL) Objects on Windows](#Sharing-PDL-Objects-on-Windows)<br />
+[Cross-platform template for making executable via PAR::Packer](#Making-Executable-via-PAR-Packer)<br />
 
 ### <a id="Parallel-IO-Reader-for-BioUtil"></a>Parallel IO Reader for BioUtil::Seq
 
