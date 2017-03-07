@@ -1,14 +1,99 @@
 ## Many-Core Engine for Perl - Cookbook
 
-This is a place holder for demonstrating various use-cases with the Perl
-MCE module including MCE::Hobo and MCE::Shared.
+This is a cookbook for demonstrating 
+[MCE](https://metacpan.org/pod/MCE),
+[MCE::Hobo](https://metacpan.org/pod/MCE::Hobo), and
+[MCE::Shared](https://metacpan.org/pod/MCE::Shared).
+See also [mce-examples](https://github.com/marioroy/mce-examples) for more recipes.
 
-[Parallel IO Reader for BioUtil::Seq](#Parallel-IO-Reader-for-BioUtil)<br />
-[Sharing Perl Data Language (PDL) Objects on UNIX](#Sharing-PDL-Objects-on-UNIX)<br />
-[Sharing Perl Data Language (PDL) Objects on Windows](#Sharing-PDL-Objects-on-Windows)<br />
-[Cross-platform template for making executable via PAR::Packer](#Making-Executable-via-PAR-Packer)<br />
+### Table of contents
 
-### <a id="Parallel-IO-Reader-for-BioUtil"></a>Parallel IO Reader for BioUtil::Seq
+[Making an executable via PAR::Packer](#Making-an-executable-via-PAR-Packer)<br />
+[Parallel IO reader with BioUtil::Seq](#Parallel-IO-reader-with-BioUtil)<br />
+[Sharing Perl Data Language (PDL) on UNIX](#Sharing-PDL-on-UNIX)<br />
+[Sharing Perl Data Language (PDL) on Windows](#Sharing-PDL-on-Windows)<br />
+[Copyright and Licensing](Copyright-and-Licensing)<br />
+
+### <a id="Making-an-executable-via-PAR-Packer"></a>Cross-platform template for making a binary executable via PAR::Packer
+
+Making an executable is possible with the L<PAR::Packer> module.
+On the Windows platform, threads, threads::shared, and exiting via
+threads are necessary for the binary to exit successfully.
+
+```perl
+ # https://metacpan.org/pod/PAR::Packer
+ # https://metacpan.org/pod/pp
+ #
+ #   pp -o demo.exe demo.pl
+ #   ./demo.exe
+
+ use strict;
+ use warnings;
+
+ use if $^O eq "MSWin32", "threads";
+ use if $^O eq "MSWin32", "threads::shared";
+
+ use Time::HiRes (); # include minimum dependencies for MCE
+ use Storable ();
+
+ use IO::FDPass ();  # optional, for MCE::Shared->condvar, handle, queue
+ use Sereal ();      # optional, faster serialization, may omit Storable
+
+ use MCE;
+
+ my $mce = MCE->new(
+    max_workers => 4,
+    user_func => sub {
+       print "hello there from ", MCE->wid(), "\n";
+    }
+ );
+
+ $mce->run();
+
+ threads->exit(0) if $INC{"threads.pm"};
+```
+
+With MCE::Shared 1.808 and later releases, MCE::Hobo works just the
+same. The following compiles fine on UNIX and the Windows platform.
+
+```perl
+ # https://metacpan.org/pod/PAR::Packer
+ # https://metacpan.org/pod/pp
+ #
+ #   pp -o demo.exe demo.pl
+ #   ./demo.exe
+
+ use strict;
+ use warnings;
+
+ use if $^O eq "MSWin32", "threads";
+ use if $^O eq "MSWin32", "threads::shared";
+
+ use Time::HiRes (); # include minimum dependencies for MCE::Shared
+ use Storable ();
+
+ use IO::FDPass ();  # optional, for MCE::Shared->condvar, handle, queue
+ use Sereal ();      # optional, faster serialization, may omit Storable
+
+ use MCE::Hobo;      # 1.808 or later on Windows
+ use MCE::Shared;
+
+ my $seq_a = MCE::Shared->sequence( 1, 30 );
+
+ sub task {
+    my ( $id ) = @_;
+    while ( defined ( my $num = $seq_a->next ) ) {
+       print "$id: $num\n";
+    }
+ }
+
+ MCE::Hobo->new( \&task, $_ ) for 1 .. 2;
+ MCE::Hobo->waitall;
+
+ threads->exit(0) if $INC{"threads.pm"};
+```
+
+### <a id="Parallel-IO-reader-with-BioUtil"></a>Parallel IO reader with BioUtil::Seq
 
 MCE::Shared provides a "real" shared handle. Thus, allowing for parallel IO
 iteration between many workers simultaneously.
@@ -100,7 +185,7 @@ This demonstration requires MCE 1.8xx or later to work.
   $_->join() for MCE::Hobo->list();
 ```
 
-### <a id="Sharing-PDL-Objects-on-UNIX"></a>Sharing Perl Data Language (PDL) Objects on UNIX
+### <a id="Sharing-PDL-on-UNIX"></a>Sharing Perl Data Language (PDL) on UNIX
 
 One can share PDL objects beginning with MCE 1.8xx. Construction takes
 place under the shared-manager process. PDL methods are directed automatically
@@ -180,7 +265,7 @@ via Perl's AUTOLOAD feature inside MCE::Shared::Object.
  print "\n";
 ```
 
-### <a id="Sharing-PDL-Objects-on-Windows"></a>Sharing Perl Data Language (PDL) Objects on Windows
+### <a id="Sharing-PDL-on-Windows"></a>Sharing Perl Data Language (PDL) on Windows
 
 The above example fails on Windows. Therefore, the next demonstration will
 share all 3 matrices. Workers obtain a copy for the right matrix. Another way
@@ -216,86 +301,7 @@ with the MCE examples on Github).
  }
 ```
 
-### <a id="Making-Executable-via-PAR-Packer"></a>Cross-platform template for making a binary executable via PAR::Packer
-
-Making an executable is possible with the L<PAR::Packer> module.
-On the Windows platform, threads, threads::shared, and exiting via
-threads are necessary for the binary to exit successfully.
-
-```perl
- # https://metacpan.org/pod/PAR::Packer
- # https://metacpan.org/pod/pp
- #
- #   pp -o demo.exe demo.pl
- #   ./demo.exe
-
- use strict;
- use warnings;
-
- use if $^O eq "MSWin32", "threads";
- use if $^O eq "MSWin32", "threads::shared";
-
- use Time::HiRes (); # include minimum dependencies for MCE
- use Storable ();
-
- use IO::FDPass ();  # optional, for MCE::Shared->condvar, handle, queue
- use Sereal ();      # optional, faster serialization, may omit Storable
-
- use MCE;
-
- my $mce = MCE->new(
-    max_workers => 4,
-    user_func => sub {
-       print "hello there from ", MCE->wid(), "\n";
-    }
- );
-
- $mce->run();
-
- threads->exit(0) if $INC{"threads.pm"};
-```
-
-With MCE::Shared 1.808 and later releases, MCE::Hobo works just the
-same. The following compiles fine on UNIX and the Windows platform.
-
-```perl
- # https://metacpan.org/pod/PAR::Packer
- # https://metacpan.org/pod/pp
- #
- #   pp -o demo.exe demo.pl
- #   ./demo.exe
-
- use strict;
- use warnings;
-
- use if $^O eq "MSWin32", "threads";
- use if $^O eq "MSWin32", "threads::shared";
-
- use Time::HiRes (); # include minimum dependencies for MCE::Shared
- use Storable ();
-
- use IO::FDPass ();  # optional, for MCE::Shared->condvar, handle, queue
- use Sereal ();      # optional, faster serialization, may omit Storable
-
- use MCE::Hobo;      # 1.808 or later on Windows
- use MCE::Shared;
-
- my $seq_a = MCE::Shared->sequence( 1, 30 );
-
- sub task {
-    my ( $id ) = @_;
-    while ( defined ( my $num = $seq_a->next ) ) {
-       print "$id: $num\n";
-    }
- }
-
- MCE::Hobo->new( \&task, $_ ) for 1 .. 2;
- MCE::Hobo->waitall;
-
- threads->exit(0) if $INC{"threads.pm"};
-```
-
-### Copyright and Licensing
+### <a id="Copyright-and-Licensing"></a>Copyright and Licensing
 
 Copyright (C) 2012-2015 by Mario E. Roy <marioeroy AT gmail DOT com>
 
