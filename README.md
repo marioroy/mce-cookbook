@@ -12,9 +12,9 @@ See also [mce-examples](https://github.com/marioroy/mce-examples) for more recip
  - [Sharing Perl Data Language (PDL) on Windows](#Sharing-PDL-on-Windows)
  - [Copyright and Licensing](#Copyright-and-Licensing)
 
-------
+<a id="Making-an-executable-via-PAR-Packer"></a>------
 
-### <a id="Making-an-executable-via-PAR-Packer"></a>Cross-platform template for making a binary executable via PAR::Packer
+### Cross-platform template for making a binary executable via PAR::Packer
 
 Making an executable is possible with the L<PAR::Packer> module.
 On the Windows platform, threads, threads::shared, and exiting via
@@ -93,9 +93,9 @@ same. The following compiles fine on UNIX and the Windows platform.
  threads->exit(0) if $INC{"threads.pm"};
 ```
 
-------
+<a id="Parallel-IO-reader-with-BioUtil"></a>------
 
-### <a id="Parallel-IO-reader-with-BioUtil"></a>Parallel IO reader with BioUtil::Seq
+### Parallel IO reader with BioUtil::Seq
 
 MCE::Shared provides a "real" shared handle. Thus, allowing for parallel IO
 iteration between many workers simultaneously.
@@ -187,9 +187,9 @@ This demonstration requires MCE 1.8xx or later to work.
   $_->join() for MCE::Hobo->list();
 ```
 
-------
+<a id="Sharing-PDL-on-UNIX"></a>------
 
-### <a id="Sharing-PDL-on-UNIX"></a>Sharing Perl Data Language (PDL) on UNIX
+### Sharing Perl Data Language (PDL) on UNIX
 
 One can share PDL objects beginning with MCE 1.8xx. Construction takes
 place under the shared-manager process. PDL methods are directed automatically
@@ -269,9 +269,9 @@ via Perl's AUTOLOAD feature inside MCE::Shared::Object.
  print "\n";
 ```
 
-------
+<a id="Sharing-PDL-on-Windows"></a>------
 
-### <a id="Sharing-PDL-on-Windows"></a>Sharing Perl Data Language (PDL) on Windows
+### Sharing Perl Data Language (PDL) on Windows
 
 The above example fails on Windows. Therefore, the next demonstration will
 share all 3 matrices. Workers obtain a copy for the right matrix. Another way
@@ -307,9 +307,9 @@ with the MCE examples on Github).
  }
 ```
 
-------
+<a id="Copyright-and-Licensing"></a>------
 
-### <a id="Copyright-and-Licensing"></a>Copyright and Licensing
+### Copyright and Licensing
 
 Copyright (C) 2012-2015 by Mario E. Roy <marioeroy AT gmail DOT com>
 
