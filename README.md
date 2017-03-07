@@ -1,15 +1,15 @@
 ## Many-Core Engine for Perl - Cookbook
 
 This is a cookbook for demonstrating 
-[MCE](https://metacpan.org/pod/MCE),
-[MCE::Hobo](https://metacpan.org/pod/MCE::Hobo), and
-[MCE::Shared](https://metacpan.org/pod/MCE::Shared).
-See also [mce-examples](https://github.com/marioroy/mce-examples) for more recipes.
+ [MCE](https://metacpan.org/pod/MCE),
+ [MCE::Hobo](https://metacpan.org/pod/MCE::Hobo), and
+ [MCE::Shared](https://metacpan.org/pod/MCE::Shared). See also
+ [mce-examples](https://github.com/marioroy/mce-examples) for more recipes.
 
  - [Making an executable via PAR::Packer](#Making-an-executable-via-PAR-Packer)
  - [Parallel IO reader with BioUtil::Seq](#Parallel-IO-reader-with-BioUtil)
- - [Sharing Perl Data Language (PDL) on UNIX](#Sharing-PDL-on-UNIX)
- - [Sharing Perl Data Language (PDL) on Windows](#Sharing-PDL-on-Windows)
+ - [Sharing Perl-Data-Language (PDL) on UNIX](#Sharing-PDL-on-UNIX)
+ - [Sharing Perl-Data-Language (PDL) on Windows](#Sharing-PDL-on-Windows)
  - [Copyright and Licensing](#Copyright-and-Licensing)
 
 <a id="Making-an-executable-via-PAR-Packer"></a>
@@ -189,7 +189,7 @@ This demonstration requires MCE 1.8xx or later to work.
 
 <a id="Sharing-PDL-on-UNIX"></a>
 
-### Sharing Perl Data Language (PDL) on UNIX
+### Sharing Perl-Data-Language (PDL) on UNIX
 
 One can share PDL objects beginning with MCE 1.8xx. Construction takes
 place under the shared-manager process. PDL methods are directed automatically
@@ -271,7 +271,7 @@ via Perl's AUTOLOAD feature inside MCE::Shared::Object.
 
 <a id="Sharing-PDL-on-Windows"></a>
 
-### Sharing Perl Data Language (PDL) on Windows
+### Sharing Perl-Data-Language (PDL) on Windows
 
 The above example fails on Windows. Therefore, the next demonstration will
 share all 3 matrices. Workers obtain a copy for the right matrix. Another way
