@@ -3,17 +3,17 @@
 This is a place holder for demonstrating various use-cases with the Perl
 MCE module including MCE::Hobo and MCE::Shared.
 
-My first priority is completing MCE 1.700. Afterwards, will work on this.
+[Parallel IO Reader for BioUtil::Seq](#Parallel-IO-Reader-for-BioUtil)
+[Sharing Perl Data Language (PDL) Objects on UNIX](#Sharing-PDL-Objects-on-UNIX)
+[Sharing Perl Data Language (PDL) Objects on Windows](#Sharing-PDL-Objects-on-Windows)
+[Cross-platform template for making executable via PAR::Packer](#Making-Executable-via-PAR-Packer)
 
-Best Regards,
-Mario
-
-### Parallel IO reader demonstration for BioUtil::Seq
+### <a id="Parallel-IO-Reader-for-BioUtil"></a>Parallel IO Reader for BioUtil::Seq
 
 MCE::Shared provides a "real" shared handle. Thus, allowing for parallel IO
 iteration between many workers simultaneously.
 
-This demonstration requires MCE 1.699(002) or later to work.
+This demonstration requires MCE 1.8xx or later to work.
 
 ```perl
  use strict;
@@ -100,9 +100,9 @@ This demonstration requires MCE 1.699(002) or later to work.
   $_->join() for MCE::Hobo->list();
 ```
 
-### Sharing Perl Data Language (PDL) objects on UNIX
+### <a id="Sharing-PDL-Objects-on-UNIX"></a>Sharing Perl Data Language (PDL) Objects on UNIX
 
-One can share PDL objects beginning with MCE 1.699(001). Construction takes
+One can share PDL objects beginning with MCE 1.8xx. Construction takes
 place under the shared-manager process. PDL methods are directed automatically
 via Perl's AUTOLOAD feature inside MCE::Shared::Object.
 
@@ -180,7 +180,7 @@ via Perl's AUTOLOAD feature inside MCE::Shared::Object.
  print "\n";
 ```
 
-### Sharing Perl Data Language (PDL) objects on Windows
+### <a id="Sharing-PDL-Objects-on-Windows"></a>Sharing Perl Data Language (PDL) Objects on Windows
 
 The above example fails on Windows. Therefore, the next demonstration will
 share all 3 matrices. Workers obtain a copy for the right matrix. Another way
@@ -216,7 +216,7 @@ with the MCE examples on Github).
  }
 ```
 
-### Cross-platform template for making a binary executable via PAR::Packer
+### <a id="Making-Executable-via-PAR-Packer"></a>Cross-platform template for making a binary executable via PAR::Packer
 
 Making an executable is possible with the L<PAR::Packer> module.
 On the Windows platform, threads, threads::shared, and exiting via
