@@ -1,10 +1,10 @@
 ## Many-Core Engine for Perl - Cookbook
 
 This is a cookbook for demonstrating 
- <a href="https://metacpan.org/pod/MCE" target="_blank">MCE</a>,
- <a href="https://metacpan.org/pod/MCE::Hobo" target="_blank">MCE::Hobo</a>, and
- <a href="https://metacpan.org/pod/MCE::Shared" target="_blank">MCE::Shared</a>. See also
- <a href="https://github.com/marioroy/mce-examples" target="_blank">mce-examples</a> for more recipes.
+ [MCE](https://metacpan.org/pod/MCE),
+ [MCE::Hobo](https://metacpan.org/pod/MCE::Hobo), and
+ [MCE::Shared](https://metacpan.org/pod/MCE::Shared). See also
+ [mce-examples](https://github.com/marioroy/mce-examples) for more recipes.
 
  - [Making an executable via PAR::Packer](#Making-an-executable-via-PAR-Packer)
  - [Parallel-IO Reader with BioUtil::Seq](#Parallel-IO-Reader-with-BioUtil)
