@@ -12,9 +12,7 @@ See also [mce-examples](https://github.com/marioroy/mce-examples) for more recip
  - [Sharing Perl Data Language (PDL) on Windows](#Sharing-PDL-on-Windows)
  - [Copyright and Licensing](#Copyright-and-Licensing)
 
-<a id="Making-an-executable-via-PAR-Packer"></a>
-
-------
+<a id="Making-an-executable-via-PAR-Packer"></a><br />
 
 ### Cross-platform template for making a binary executable via PAR::Packer
 
@@ -95,9 +93,7 @@ same. The following compiles fine on UNIX and the Windows platform.
  threads->exit(0) if $INC{"threads.pm"};
 ```
 
-<a id="Parallel-IO-reader-with-BioUtil"></a>
-
-------
+<a id="Parallel-IO-reader-with-BioUtil"></a><br />
 
 ### Parallel IO reader with BioUtil::Seq
 
@@ -191,9 +187,7 @@ This demonstration requires MCE 1.8xx or later to work.
   $_->join() for MCE::Hobo->list();
 ```
 
-<a id="Sharing-PDL-on-UNIX"></a>
-
-------
+<a id="Sharing-PDL-on-UNIX"></a><br />
 
 ### Sharing Perl Data Language (PDL) on UNIX
 
@@ -275,9 +269,7 @@ via Perl's AUTOLOAD feature inside MCE::Shared::Object.
  print "\n";
 ```
 
-<a id="Sharing-PDL-on-Windows"></a>
-
-------
+<a id="Sharing-PDL-on-Windows"></a><br />
 
 ### Sharing Perl Data Language (PDL) on Windows
 
@@ -315,9 +307,7 @@ with the MCE examples on Github).
  }
 ```
 
-<a id="Copyright-and-Licensing"></a>
-
-------
+<a id="Copyright-and-Licensing"></a><br />
 
 ### Copyright and Licensing
 
