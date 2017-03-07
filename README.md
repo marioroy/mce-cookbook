@@ -1,13 +1,13 @@
 ## Many-Core Engine for Perl - Cookbook
 
 This is a cookbook for demonstrating 
- [MCE](https://metacpan.org/pod/MCE),
- [MCE::Hobo](https://metacpan.org/pod/MCE::Hobo), and
- [MCE::Shared](https://metacpan.org/pod/MCE::Shared). See also
- [mce-examples](https://github.com/marioroy/mce-examples) for more recipes.
+ <a href="https://metacpan.org/pod/MCE" target="_blank">MCE</a>,
+ <a href="https://metacpan.org/pod/MCE::Hobo" target="_blank">MCE::Hobo</a>, and
+ <a href="https://metacpan.org/pod/MCE::Shared" target="_blank">MCE::Shared</a>. See also
+ <a href="https://github.com/marioroy/mce-examples" target="_blank">mce-examples</a> for more recipes.
 
  - [Making an executable via PAR::Packer](#Making-an-executable-via-PAR-Packer)
- - [Parallel IO reader with BioUtil::Seq](#Parallel-IO-reader-with-BioUtil)
+ - [Parallel-IO Reader with BioUtil::Seq](#Parallel-IO-Reader-with-BioUtil)
  - [Sharing Perl-Data-Language (PDL) on UNIX](#Sharing-PDL-on-UNIX)
  - [Sharing Perl-Data-Language (PDL) on Windows](#Sharing-PDL-on-Windows)
  - [Copyright and Licensing](#Copyright-and-Licensing)
@@ -93,9 +93,9 @@ same. The following compiles fine on UNIX and the Windows platform.
  threads->exit(0) if $INC{"threads.pm"};
 ```
 
-<a id="Parallel-IO-reader-with-BioUtil"></a>
+<a id="Parallel-IO-Reader-with-BioUtil"></a>
 
-### Parallel IO reader with BioUtil::Seq
+### Parallel-IO Reader with BioUtil::Seq
 
 MCE::Shared provides a "real" shared handle. Thus, allowing for parallel IO
 iteration between many workers simultaneously.
@@ -311,7 +311,7 @@ with the MCE examples on Github).
 
 ### Copyright and Licensing
 
-Copyright (C) 2012-2015 by Mario E. Roy <marioeroy AT gmail DOT com>
+Copyright (C) 2012-2017 by Mario E. Roy <marioeroy AT gmail DOT com>
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself:
