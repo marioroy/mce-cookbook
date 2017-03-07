@@ -6,8 +6,6 @@ This is a cookbook for demonstrating
 [MCE::Shared](https://metacpan.org/pod/MCE::Shared).
 See also [mce-examples](https://github.com/marioroy/mce-examples) for more recipes.
 
-### Table of contents
-
 [Making an executable via PAR::Packer](#Making-an-executable-via-PAR-Packer)<br />
 [Parallel IO reader with BioUtil::Seq](#Parallel-IO-reader-with-BioUtil)<br />
 [Sharing Perl Data Language (PDL) on UNIX](#Sharing-PDL-on-UNIX)<br />
