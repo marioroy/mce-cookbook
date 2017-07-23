@@ -10,6 +10,7 @@ This is a cookbook for demonstrating
  - [Parallel-IO Reader with BioUtil::Seq](#parallel-io-reader-with-bioutilseq)
  - [Sharing Perl-Data-Language (PDL) on UNIX](#sharing-perl-data-language-pdl-on-unix)
  - [Sharing Perl-Data-Language (PDL) on Windows](#sharing-perl-data-language-pdl-on-windows)
+ - [Sharing Perl-Data-Language (PDL) using threads](#sharing-perl-data-language-pdl-using-threads)
  - [Copyright and Licensing](#copyright-and-licensing)
 
 ------
@@ -187,9 +188,9 @@ This demonstration requires MCE 1.8xx or later to work.
 
 ### Sharing Perl-Data-Language (PDL) on UNIX
 
-One can share PDL objects beginning with MCE 1.8xx. Construction takes
-place under the shared-manager process. PDL methods are directed automatically
-via Perl's AUTOLOAD feature inside MCE::Shared::Object.
+Sharing PDL objects is possible with MCE 1.8 and above. Construction takes
+place under the shared-manager process. PDL methods are processed automatically
+through Perl's AUTOLOAD feature, inside MCE::Shared::Object.
 
 ```perl
  use strict;
@@ -202,18 +203,18 @@ via Perl's AUTOLOAD feature inside MCE::Shared::Object.
  use Time::HiRes qw( time );
 
  my $tam     = @ARGV ? shift : 512;
- my $N_procs = @ARGV ? shift :   8;
+ my $N_procs = @ARGV ? shift :   4;
 
  die "error: $tam must be an integer greater than 1.\n"
    if $tam !~ /^\d+$/ or $tam < 2;
 
- my ( $step_size   ) = ( ($tam > 2048) ? 24 : ($tam > 1024) ? 16 : 8 );
+ my ( $step_size   ) = ( ($tam >= 2048) ? 256 : ($tam >= 1024) ? 128 : 64 );
  my ( $cols, $rows ) = ( $tam, $tam );
 
  my $s = MCE::Shared->num_sequence( 0, $rows - 1, $step_size );
  my $o = MCE::Shared->pdl_zeroes( $rows, $rows );
 
- my $l = MCE::Shared->pdl_sequence( $cols, $rows );
+ my $l = sequence( $cols, $rows );
  my $r = sequence( $rows, $cols );
 
  sub parallel_matmult {
@@ -267,12 +268,17 @@ via Perl's AUTOLOAD feature inside MCE::Shared::Object.
 
 ### Sharing Perl-Data-Language (PDL) on Windows
 
-The above example fails on Windows. Therefore, the next demonstration will
-share all 3 matrices. Workers obtain a copy for the right matrix. Another way
-is using memory mapped data for the right matrix (matmult_mce_d.pl - included
-with the MCE examples on Github).
+Unfortunately, the above example will not work on the Windows platform.
+Therefore, all 3 matrices must be shared. Workers make a local copy for
+the right matrix only. Another possibility is using memory mapped data;
+see matmult/matmult_mce_d.pl, included with mce-examples on Github.
+
+The next section provides a demonstration using PDL::Parallel::threads.
 
 ```perl
+ my $o = MCE::Shared->pdl_zeroes( $rows, $rows );
+
+ my $l = MCE::Shared->pdl_sequence( $cols, $rows );
  my $r = MCE::Shared->pdl_sequence( $rows, $cols );
 
  sub parallel_matmult {
@@ -300,6 +306,80 @@ with the MCE examples on Github).
     return;
  }
 ```
+
+### Sharing Perl-Data-Language (PDL) using threads
+
+The prior example consumes unnecessary memory consumption. Fortunately,
+there's another way via PDL::Parallel::threads. This requires Perl to be
+built with threads support.
+
+ use strict;
+ use warnings;
+
+ use PDL;
+ use PDL::Parallel::threads qw(retrieve_pdls);
+
+ use threads;
+ use MCE::Shared;
+ use Time::HiRes qw( time );
+
+ my $tam     = @ARGV ? shift : 512;
+ my $N_procs = @ARGV ? shift :   4;
+
+ die "error: $tam must be an integer greater than 1.\n"
+   if $tam !~ /^\d+$/ or $tam < 2;
+
+ my ( $step_size   ) = ( ($tam >= 2048) ? 256 : ($tam >= 1024) ? 128 : 64 );
+ my ( $cols, $rows ) = ( $tam, $tam );
+
+ my $s = MCE::Shared->num_sequence( 0, $rows - 1, $step_size );
+
+ my $o = zeroes( $rows, $rows );     $o->share_as('output');
+ my $l = sequence( $cols, $rows );   $l->share_as('left_input');
+ my $r = sequence( $rows, $cols );   $r->share_as('right_input');
+
+ sub parallel_matmult {
+    my ( $id ) = @_;
+    my ( $o, $l, $r ) = retrieve_pdls('output', 'left_input', 'right_input');
+
+    while ( defined ( my $seq_n = $s->next() ) ) {
+       my $start  = $seq_n;
+       my $stop   = $start + $step_size - 1;
+          $stop   = $rows - 1 if $stop >= $rows;
+
+       my $result = $l->slice( ":,$start:$stop" ) x $r;
+
+     # ins( inplace($o), $result, 0, $seq_n );
+       $o->slice(":,$start:$stop") .= $result;
+
+     # use PDL::NiceSlice;
+     # $o(:,$start:$stop) .= $result;
+     # no  PDL::NiceSlice;
+    }
+
+    return;
+ }
+
+ my $start = time;
+
+ threads->create( \&parallel_matmult, $_ ) for 1 .. $N_procs;
+
+ # ... do other stuff ...
+
+ $_->join() for threads->list();
+
+ printf "\ntam $tam, duration: %0.03f secs\n\n", time - $start;
+
+ # Output logic is consistent with example by David Mertens.
+ # https://gist.github.com/run4flat/4942132
+
+ for my $pair ( [0, 0], [324, 5], [42, 172], [$tam-1, $tam-1] ) {
+    my ( $row, $col ) = @$pair;
+    $row %= $rows, $col %= $cols;
+    print "( $row, $col ): ", $o->at( $row, $col ), "\n";
+ }
+
+ print "\n";
 
 ### Copyright and Licensing
 
