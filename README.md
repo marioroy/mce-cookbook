@@ -313,6 +313,7 @@ The prior example consumes unnecessary memory consumption. Fortunately,
 there's another way via PDL::Parallel::threads. This requires Perl to be
 built with threads support.
 
+```perl
  use strict;
  use warnings;
 
@@ -380,6 +381,7 @@ built with threads support.
  }
 
  print "\n";
+```
 
 ### Copyright and Licensing
 
