@@ -34,11 +34,12 @@ threads are necessary for the binary to exit successfully.
  use if $^O eq "MSWin32", "threads";
  use if $^O eq "MSWin32", "threads::shared";
 
- use Time::HiRes (); # include minimum dependencies for MCE
- use Storable ();
+ # Include minimum dependencies for MCE.
 
- use IO::FDPass ();  # optional, for MCE::Shared->condvar, handle, queue
- use Sereal ();      # optional, faster serialization, may omit Storable
+ use Storable ();
+ use Time::HiRes ();
+
+ # use Sereal ();     # optional, for faster serialization
 
  use MCE;
 
@@ -54,8 +55,10 @@ threads are necessary for the binary to exit successfully.
  threads->exit(0) if $INC{"threads.pm"};
 ```
 
-With MCE::Shared 1.808 and later releases, MCE::Hobo works just the
-same. The following compiles fine on UNIX and the Windows platform.
+MCE workers above spawn as threads whenever threads is present. Unlike MCE,
+MCE::Hobo workers can only be child processes, spawned via fork. That means
+having to run the application inside a thread on the Windows platform or
+the exe will crash.
 
 ```perl
  # https://metacpan.org/pod/PAR::Packer
@@ -70,26 +73,54 @@ same. The following compiles fine on UNIX and the Windows platform.
  use if $^O eq "MSWin32", "threads";
  use if $^O eq "MSWin32", "threads::shared";
 
- use Time::HiRes (); # include minimum dependencies for MCE::Shared
+ # Include minimum dependencies for MCE::Hobo.
+
  use Storable ();
+ use Time::HiRes ();
 
- use IO::FDPass ();  # optional, for MCE::Shared->condvar, handle, queue
- use Sereal ();      # optional, faster serialization, may omit Storable
+ # use IO::FDPass ();  # optional: for condvar, handle, queue
+ # use Sereal ();      # optional: for faster serialization
 
- use MCE::Hobo;      # 1.808 or later on Windows
+ use MCE::Hobo;
  use MCE::Shared;
 
- my $seq_a = MCE::Shared->sequence( 1, 30 );
+ # For PAR to work on the Windows platform, one must include manually
+ # any shared modules used by the application.
+
+ # use MCE::Shared::Array;    # for MCE::Shared->array
+ # use MCE::Shared::Cache;    # for MCE::Shared->cache
+ # use MCE::Shared::Condvar;  # for MCE::Shared->condvar
+ # use MCE::Shared::Handle;   # for MCE::Shared->handle, mce_open
+ # use MCE::Shared::Hash;     # for MCE::Shared->hash
+ # use MCE::Shared::Minidb;   # for MCE::Shared->minidb
+ # use MCE::Shared::Ordhash;  # for MCE::Shared->ordhash
+ # use MCE::Shared::Queue;    # for MCE::Shared->queue
+ # use MCE::Shared::Scalar;   # for MCE::Shared->scalar
+
+ # Et cetera. Only load modules needed for your application.
+
+ use MCE::Shared::Sequence;   # for MCE::Shared->sequence
+
+ my $seq = MCE::Shared->sequence( 1, 9 );
 
  sub task {
-    my ( $id ) = @_;
-    while ( defined ( my $num = $seq_a->next ) ) {
-       print "$id: $num\n";
-    }
+     my ( $id ) = @_;
+     while ( defined ( my $num = $seq->next() ) ) {
+         print "$id: $num\n";
+         sleep 1;
+     }
  }
 
- MCE::Hobo->new( \&task, $_ ) for 1 .. 2;
- MCE::Hobo->waitall;
+ sub main {
+     MCE::Hobo->new( \&task, $_ ) for 1 .. 3;
+     MCE::Hobo->waitall();
+ }
+
+ # Main must run inside a thread on the Windows platform or workers
+ # will fail duing exiting, causing the exe to crash. The reason is
+ # that PAR or a dependency isn't multi-process safe.
+
+ ( $^O eq "MSWin32" ) ? threads->create(\&main)->join() : main();
 
  threads->exit(0) if $INC{"threads.pm"};
 ```
