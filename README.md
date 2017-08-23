@@ -56,9 +56,9 @@ threads are necessary for the binary to exit successfully.
 ```
 
 MCE workers above spawn as threads whenever threads is present. Unlike MCE,
-MCE::Hobo workers can only be child processes, spawned via fork. That means
-having to run the application inside a thread on the Windows platform or
-the exe will crash.
+MCE::Hobo workers can only run as child processes, spawned via fork. To work
+around PAR or a dependency not being multi-process safe, one must run inside
+a thread on the Windows platform or the exe will crash.
 
 ```perl
  # https://metacpan.org/pod/PAR::Packer
