@@ -7,7 +7,9 @@ This is a cookbook for demonstrating
 [mce-examples](https://github.com/marioroy/mce-examples) for more recipes.
 
  - [Making an executable via PAR::Packer](#cross-platform-template-for-making-a-binary-executable-via-parpacker)
- - [Parallel-IO Reader with BioUtil::Seq](#parallel-io-reader-with-bioutilseq)
+ - [Parallel-IO Reader for BioUtil::Seq](#parallel-io-reader-for-bioutilseq)
+ - [Parallel-IO Reader via Bio::SeqIO](#parallel-io-reader-via-bioseqio)
+ - [Parallel-IO Bio::SeqIO reformatter](#parallel-io-bioseqio-reformatter)
  - [Sharing Perl-Data-Language (PDL) on UNIX](#sharing-perl-data-language-pdl-on-unix)
  - [Sharing Perl-Data-Language (PDL) on Windows](#sharing-perl-data-language-pdl-on-windows)
  - [Sharing Perl-Data-Language (PDL) using threads](#sharing-perl-data-language-pdl-using-threads)
@@ -127,12 +129,11 @@ a thread on the Windows platform or the exe will crash.
  threads->exit(0) if $INC{"threads.pm"};
 ```
 
-### Parallel-IO Reader with BioUtil::Seq
+### Parallel-IO Reader for BioUtil::Seq
 
 MCE::Shared provides a "real" shared handle. Thus, allowing for parallel IO
-iteration between many workers simultaneously.
-
-This demonstration requires MCE 1.8xx or later to work.
+iteration between many workers simultaneously. This demonstration requires
+MCE::Shared 1.831 or later to run.
 
 ```perl
  use strict;
@@ -145,7 +146,7 @@ This demonstration requires MCE 1.8xx or later to work.
     my ( $file, $not_trim ) = @_;
 
     my ( $open_flg ) = ( 0 );
-    my ( $fh, $pos, $head );
+    my ( $fh, $pos, $hdr, $id, $desc );
 
     if ( $file =~ /^STDIN$/i ) {
        # from stdin
@@ -158,12 +159,12 @@ This demonstration requires MCE 1.8xx or later to work.
        $open_flg = 1;
     }
     else {
-       # glob, i.e. given file handler
+       # glob: i.e. given file handler
        # $fh = $file  # ok for MCE::Shared{ ->handle or ::Handle->new }
        #                                     (shared)    (non-shared)
        #
        # Below logic will not work if not a MCE::Shared handle. The reason
-       # is that MCE::Shared/Handle treats "\n>" auto-magically; providing
+       # is that MCE/Shared/Handle.pm treats "\n>" auto-magically; providing
        # records beginning with ">" and ending with "\n".
 
        return sub { return };
@@ -177,18 +178,22 @@ This demonstration requires MCE 1.8xx or later to work.
           next if substr($_, 0, 1) ne '>';
 
           # extract header and sequence
-          $pos  = index( $_, "\n" ) + 1;
-          $head = substr( $_, 1, $pos - 2 );
+          $pos = index( $_, "\n" ) + 1;
+          $hdr = substr( $_, 1, $pos - 2 );
 
           # $_ becomes sequence after substr
           substr( $_, 0, $pos, '' );
 
           # trim trailing "\r" in header
-          chop $head if substr( $head, -1, 1 ) eq "\r";
+          chop $hdr if substr( $hdr, -1, 1 ) eq "\r";
 
-          if ( length $head > 0 ) {
+          # id and description
+          ($id, $desc) = split(' ', $hdr, 2);
+          $desc = '' unless defined $desc;
+
+          if ( length $hdr > 0 ) {
              $_ =~ tr/\t\r\n //d unless $not_trim;
-             return [ $head, $_ ];
+             return [ $id, $desc, $_ ];
           }
        }
 
@@ -199,24 +204,256 @@ This demonstration requires MCE 1.8xx or later to work.
  }
 
  sub parallel_reader {
-    my ( $id, $next_seq ) = @_;
+    my ( $hoboID, $next_seq ) = @_;
 
     while ( my $fa = &$next_seq() ) {
-       my ( $header, $seq ) = @$fa;
-       print "$id: >$header\n$seq\n";
+       my ( $id, $desc, $seq ) = @$fa;
+       print "$hoboID: >$id $desc\n$seq\n";
 
        sleep 1;  # simulate work
     }
  }
 
- #my $next_seq = FastaReader2("STDIN");
-  my $next_seq = FastaReader2("sample.fasta");
+ my $next_seq = FastaReader2("sample.fasta");  # or "STDIN"
 
-  MCE::Hobo->new( \&parallel_reader, $_, $next_seq ) for 1 .. 3;
+ for my $hoboID ( 1 .. 3 ) {
+    MCE::Hobo->new( \&parallel_reader, $hoboID, $next_seq );
+ }
 
  #... do other stuff ...
 
-  $_->join() for MCE::Hobo->list();
+ MCE::Hobo->waitall();
+```
+
+### Parallel-IO Reader via Bio::SeqIO
+
+A simplier demonstration using a shared Bio::SeqIO handle. Like the prior
+example, MCE::Shared 1.831 or later is required.
+
+```perl
+ use strict;
+ use warnings;
+
+ use MCE::Hobo;
+ use MCE::Shared;
+
+ use Bio::Seq;
+ use Bio::SeqIO;
+
+ sub parallel_reader {
+    my ( $hoboID, $seqIO ) = @_;
+
+    while ( my $next = $seqIO->next_seq() ) {
+       my ( $id, $desc, $seq ) = ( $next->id, $next->desc, $next->seq );
+       print "$hoboID: >$id $desc\n$seq\n";
+
+       sleep 1;  # simulate work
+    }
+ }
+
+ my $seqIO = MCE::Shared->share( { module => 'Bio::SeqIO' },
+    -file => "sample.fasta", -format => "Fasta"
+ );
+
+ for my $hoboID ( 1 .. 3 ) {
+    MCE::Hobo->new( \&parallel_reader, $hoboID, $seqIO );
+ }
+
+ #... do other stuff ...
+
+ MCE::Hobo->waitall();
+```
+ 
+### Parallel-IO Bio::SeqIO reformatter
+
+The Bio::SeqIO module provides a simple reformatter example. Running parallel
+is possible. Here, workers request the next sequence from the manager process.
+The manager process also writes orderly to STDOUT.
+
+Reading by MCE workers is record-driven when the RS option is specified.
+Unfortunately, that will not work for the fastq format "\n\@" due to quality
+data containing "@" at the start of line. A way around this is having workers
+request the next sequence via an input iterator. A fasta iterator is provided
+supporting Fasta and Fastq formats.
+
+
+```perl
+ use strict;
+ use warnings;
+
+ use MCE;
+ use MCE::Candy;
+ use Scalar::Util 'reftype';
+
+ use Bio::SeqIO;
+ use IO::String;
+
+ my $format1 = shift;
+ my $format2 = shift || die
+    "Usage: perl reformat.pl format1 format2 < input > output\n",
+    "       perl reformat.pl fasta   genbank < input > output\n",
+    "       perl reformat.pl fasta   genbank   input > output (faster)\n\n";
+
+ my %recsep = (
+    embl    => "\nID",    fasta => "\n\>",   # start of record
+    genbank => "\nLOCUS", fastq => "\n\@",
+    swiss   => "\nID",    pir   => "\n\>",
+ );
+
+ die "Supported input format: ", join(", ", sort keys %recsep), "\n\n"
+    unless exists $recsep{ lc $format1 };
+
+ my $input_io  = IO::String->new( my $input  = '' );
+ my $output_io = IO::String->new( my $output = '' );
+
+ my $in  = Bio::SeqIO->newFh( -format => $format1, -fh => $input_io );
+ my $out = Bio::SeqIO->newFh( -format => $format2, -fh => $output_io );
+
+ die unless $in && $out;  # error/format cannot be found above
+
+ # Workers request sequences via an input iterator.
+
+ if ( lc $format1 eq 'fastq' ) {
+    MCE->new(
+       input_data => $ARGV[0] ? fasta_iter($ARGV[0],1) : fasta_iter(\*STDIN,1),
+
+       max_workers => 'auto', chunk_size => 2,
+       gather => MCE::Candy::out_iter_fh(\*STDOUT),
+
+       user_func => sub {
+          my ( $mce, $chunk_ref, $chunk_id ) = @_;
+
+          # rewind/truncate strings
+          $input_io->setpos(0), $output_io->setpos(0);
+          $input = '', $output = '';
+
+          # set input string
+          for my $next_seq (@{ $chunk_ref }) {
+             my ( $id, $desc, $seq, $qual ) = @{ $next_seq };
+             $input .= "\@$id $desc\n$seq\n\+$id $desc\n$qual\n";
+          }
+
+          # read input, reformat into output
+          print $out $_ while <$in>;
+
+          # send string to the manager process
+          MCE->gather( $chunk_id, $output );
+       }
+    )->run();
+ }
+
+ # Workers read/request raw text, input records determined by RS.
+
+ else {
+    MCE->new(
+       RS => $recsep{ lc $format1 },
+       input_data => $ARGV[0] ? $ARGV[0] : \*STDIN,
+
+       max_workers => 'auto', chunk_size => 2,
+       gather => MCE::Candy::out_iter_fh(\*STDOUT),
+
+       user_func => sub {
+          my ( $mce, $chunk_ref, $chunk_id ) = @_;
+
+          # rewind/truncate strings
+          $input_io->setpos(0), $output_io->setpos(0);
+          $input = '', $output = '';
+
+          # set input string
+          for my $next_seq (@{ $chunk_ref }) {
+             $input .= $next_seq;
+          }
+
+          # read input, reformat into output
+          print $out $_ while <$in>;
+
+          # send string to the manager process
+          MCE->gather( $chunk_id, $output );
+       }
+    )->run();
+ }
+
+ # Bio-Fasta/Fastq record-driven input iterator with chunking support.
+ # The chunk_size value is passed to the closure block when called by MCE.
+
+ sub fasta_iter {
+    my ( $file, $is_fastq ) = @_;
+    my ( $off, $pos, $flag, $hdr, $id, $desc, $seq, $qual );
+    my ( $fh, $finished, $chunk_size, @chunk );
+
+    if ( !reftype $file || reftype $file ne 'GLOB' ) {
+       open $fh, '<', $file or die "open error '$file': $!\n";
+    } else {
+       $fh = $file;
+    }
+
+    {
+       local $/ = \1; my $byte = <$fh>;             # read one byte
+
+       unless ( $byte eq ( $is_fastq ? '@' : '>' ) ) {
+          $/ = $is_fastq ? "\n\@" : "\n\>";         # skip comment section
+          my $skip_comment = <$fh>;                 # at the top of file
+       }
+    }
+
+    return sub {
+       return if $finished;
+       local $/ = $is_fastq ? "\n\@" : "\n\>";      # input record separator
+
+       $chunk_size = shift || 1;
+
+       while ( $seq = <$fh> ) {
+          if ( substr($seq, -1, 1) eq ( $is_fastq ? '@' : '>' ) ) {
+              substr($seq, -1, 1, '');              # trim trailing @ or >
+          }
+          $pos = index($seq, "\n") + 1;             # header and sequence
+          $hdr = substr($seq, 0, $pos - 1);         # extract the header, then
+          substr($seq, 0, $pos, '');                # ltrim header from seq
+
+          chop $hdr if substr($hdr, -1, 1) eq "\r"; # rtrim trailing "\r"
+          ( $id, $desc ) = split(' ', $hdr, 2);     # id and description
+
+          $desc = '' unless defined $desc;
+          $flag = 0;
+
+          if ( $is_fastq && ( $pos = index($seq, "\n+") ) > 0 ) {
+             $off = length($seq) - $pos;
+             if ( ( $pos = index($seq, "\n", $pos + 1) ) > 0 ) {
+                $qual = substr($seq, $pos);         # extract quality
+                $qual =~ tr/\t\r\n //d;             # trim white space
+                $flag = 1;
+             }
+             substr($seq, -$off, $off, '');         # rtrim qual from seq
+          }
+
+          $seq =~ tr/\t\r\n //d;                    # trim white space
+
+          if ( $flag && length($qual) != length($seq) ) {
+             # extract quality until length matches sequence
+             do {
+                my $tmp = <$fh>; $tmp =~ tr/\t\r\n //d;
+                substr($tmp, -1, 1, '') unless eof($fh);
+                $qual .= '@'; $qual .= $tmp;
+             } until ( length($qual) == length($seq) || eof($fh) );
+          }
+
+          ( $chunk_size > 1 )
+             ? push @chunk, [ $id, $desc, $seq, $qual || '' ]
+             : return       [ $id, $desc, $seq, $qual || '' ];
+
+          return splice(@chunk, 0, $chunk_size)
+             if ( @chunk == $chunk_size );
+       }
+
+       close $fh if ( fileno $fh > 0 );
+       $finished = 1;
+
+       return splice(@chunk, 0, scalar @chunk)
+          if ( $chunk_size > 1 && @chunk );
+
+       return;
+    }
+ }
 ```
 
 ### Sharing Perl-Data-Language (PDL) on UNIX
