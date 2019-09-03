@@ -10,8 +10,7 @@ This is a cookbook for demonstrating
  - [Parallel-IO Reader for BioUtil::Seq](#parallel-io-reader-for-bioutilseq)
  - [Parallel-IO Reader via Bio::SeqIO](#parallel-io-reader-via-bioseqio)
  - [Parallel-IO Bio::SeqIO reformatter](#parallel-io-bioseqio-reformatter)
- - [Sharing Perl-Data-Language (PDL) on UNIX](#sharing-perl-data-language-pdl-on-unix)
- - [Sharing Perl-Data-Language (PDL) on Windows](#sharing-perl-data-language-pdl-on-windows)
+ - [Sharing Perl-Data-Language (PDL)](#sharing-perl-data-language-pdl)
  - [Sharing Perl-Data-Language (PDL) using threads](#sharing-perl-data-language-pdl-using-threads)
  - [Copyright and Licensing](#copyright-and-licensing)
 
@@ -456,7 +455,7 @@ supporting Fasta and Fastq formats.
  }
 ```
 
-### Sharing Perl-Data-Language (PDL) on UNIX
+### Sharing Perl-Data-Language (PDL)
 
 Sharing PDL objects is possible with MCE 1.8 and above. Construction takes
 place under the shared-manager process. PDL methods are processed automatically
@@ -484,11 +483,20 @@ through Perl's AUTOLOAD feature, inside MCE::Shared::Object.
  my $s = MCE::Shared->num_sequence( 0, $rows - 1, $step_size );
  my $o = MCE::Shared->pdl_zeroes( $rows, $rows );
 
- my $l = sequence( $cols, $rows );
- my $r = sequence( $rows, $cols );
+ # On Windows, the ($l,$r) piddles are unblessed in worker threads.
+ # Therefore, constructing ($l,$r) inside the worker versus sharing.
+ # UNIX platforms benefit from copy-on-write. Thus, one copy.
+ #
+ # Results are stored in the shared piddle ($o) above.
+
+ my $l = ( $^O eq 'MSWin32' ) ? undef : sequence( $cols, $rows );
+ my $r = ( $^O eq 'MSWin32' ) ? undef : sequence( $rows, $cols );
 
  sub parallel_matmult {
     my ( $id ) = @_;
+
+    $l = sequence( $cols, $rows ) unless ( defined $l );
+    $r = sequence( $rows, $cols ) unless ( defined $r );
 
     while ( defined ( my $seq_n = $s->next() ) ) {
        my $start  = $seq_n;
@@ -536,52 +544,10 @@ through Perl's AUTOLOAD feature, inside MCE::Shared::Object.
  print "\n";
 ```
 
-### Sharing Perl-Data-Language (PDL) on Windows
-
-Unfortunately, the above example will not work on the Windows platform.
-Therefore, all 3 matrices must be shared. Workers make a local copy for
-the right matrix only. Another possibility is using memory mapped data;
-see matmult/matmult_mce_d.pl, included with mce-examples on Github.
-
-The next section provides a demonstration using PDL::Parallel::threads.
-
-```perl
- my $o = MCE::Shared->pdl_zeroes( $rows, $rows );
-
- my $l = MCE::Shared->pdl_sequence( $cols, $rows );
- my $r = MCE::Shared->pdl_sequence( $rows, $cols );
-
- sub parallel_matmult {
-    my ( $id ) = @_;
-    my $r_copy = $r->sever;
-
-    while ( defined ( my $seq_n = $s->next() ) ) {
-       my $start  = $seq_n;
-       my $stop   = $start + $step_size - 1;
-          $stop   = $rows - 1 if $stop >= $rows;
-
-       my $result = $l->slice( ":,$start:$stop" ) x $r_copy;
-
-     # --- action taken by the shared-manager process
-     # ins_inplace(  1 arg  ):  ins( inplace( $this ), $what, 0, 0 );
-     # ins_inplace(  2 args ):  $this->slice( $arg1 ) .= $arg2;
-     # ins_inplace( >2 args ):  ins( inplace( $this ), $what, @coords );
-
-     # -- use case
-     # $o->ins_inplace( $result );                    #  1 arg
-     # $o->ins_inplace( ":,$start:$stop", $result );  #  2 args
-       $o->ins_inplace( $result, 0, $seq_n );         # >2 args
-    }
-
-    return;
- }
-```
-
 ### Sharing Perl-Data-Language (PDL) using threads
 
-The prior example consumes unnecessary memory consumption. Fortunately,
-there's another way via PDL::Parallel::threads. This requires Perl to be
-built with threads support.
+The prior example may consume unnecessary memory consumption when using threads.
+Fortunately, there is another way via PDL::Parallel::threads.
 
 ```perl
  use strict;
